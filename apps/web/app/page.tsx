@@ -31,7 +31,7 @@ export default function LandingPage() {
               See it live <ArrowRight className="w-4 h-4" />
             </Link>
             <a
-              href="https://github.com/your-handle/ohlarr"
+              href="https://github.com/thesithunyein/ohlarr"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-zinc-800 hover:border-zinc-600 transition"
             >
               <Github className="w-4 h-4" /> View source
@@ -91,7 +91,7 @@ function Header() {
       <nav className="hidden md:flex gap-8 text-sm text-zinc-400">
         <Link href="/dashboard" className="hover:text-white">Dashboard</Link>
         <a href="#" className="hover:text-white">Docs</a>
-        <a href="https://github.com/your-handle/ohlarr" className="hover:text-white">GitHub</a>
+        <a href="https://github.com/thesithunyein/ohlarr" className="hover:text-white">GitHub</a>
       </nav>
     </header>
   );
