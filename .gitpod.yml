@@ -1,0 +1,41 @@
+# Gitpod config — open in browser:
+#   https://gitpod.io/#https://github.com/thesithunyein/ohlarr
+#
+# Free tier: 50 hours/month, fully sufficient to ship Ohlarr.
+# Reuses our .devcontainer/post-create.sh for tool installation so the
+# experience is identical to GitHub Codespaces.
+
+image: gitpod/workspace-full   # has Node, pnpm, Rust pre-installed
+
+# Run the same setup script Codespaces would
+tasks:
+  - name: Setup
+    init: |
+      bash .devcontainer/post-create.sh || true
+      pnpm install --no-frozen-lockfile
+    command: |
+      echo ""
+      echo "✅ Ohlarr workspace is ready."
+      echo ""
+      echo "Next steps:"
+      echo "  1) bash scripts/setup-keypairs.sh       # generate dev wallets + airdrop"
+      echo "  2) bash scripts/deploy-and-init.sh      # build + deploy program to devnet"
+      echo "  3) pnpm dev                             # starts web + seller + buyer"
+
+ports:
+  - port: 3000           # Next.js dashboard
+    onOpen: open-preview
+    visibility: public
+  - port: 3001           # Express seller demo
+    onOpen: ignore
+    visibility: public
+  - port: 8899           # Local solana-test-validator (optional)
+    onOpen: ignore
+
+vscode:
+  extensions:
+    - rust-lang.rust-analyzer
+    - tamasfe.even-better-toml
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - bradlc.vscode-tailwindcss
