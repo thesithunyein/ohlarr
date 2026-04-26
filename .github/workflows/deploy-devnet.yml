@@ -47,19 +47,44 @@ jobs:
         run: |
           mkdir -p ~/.config/solana
           if [ -n "$DEPLOYER_KEYPAIR" ]; then
-            echo "$DEPLOYER_KEYPAIR" > ~/.config/solana/id.json
+            # Accept either: (a) JSON array '[1,2,3,...]' or (b) base64 of the raw 64-byte secret key
+            trimmed=$(echo -n "$DEPLOYER_KEYPAIR" | tr -d '[:space:]')
+            if [[ "$trimmed" == \[*\] ]]; then
+              echo "$trimmed" > ~/.config/solana/id.json
+            else
+              # base64 → 64 bytes → JSON array
+              python3 -c "import base64,json,sys; b=base64.b64decode(sys.argv[1]); print(json.dumps(list(b)))" "$trimmed" > ~/.config/solana/id.json
+            fi
+            # Validate
+            if ! solana-keygen pubkey ~/.config/solana/id.json >/dev/null 2>&1; then
+              echo "::error ::DEPLOYER_KEYPAIR secret could not be parsed as JSON array or base64. Re-save it (see logs of a fresh run for the exact format)."
+              exit 1
+            fi
             echo "✅ Loaded deployer keypair from secret"
           else
             solana-keygen new --no-bip39-passphrase --outfile ~/.config/solana/id.json --force
-            echo "::warning ::No DEPLOYER_KEYPAIR secret set. Generated a new ephemeral one (won't survive between runs)."
-            echo "::warning ::Save this as a GitHub Secret named DEPLOYER_KEYPAIR to make deploys reproducible:"
-            cat ~/.config/solana/id.json
+            B64=$(python3 -c "import json,base64,sys; print(base64.b64encode(bytes(json.load(open(sys.argv[1])))).decode())" ~/.config/solana/id.json)
+            echo "::warning ::No DEPLOYER_KEYPAIR secret set. Save the value below as repo secret 'DEPLOYER_KEYPAIR' to make deploys reproducible."
+            echo ""
+            echo "==================== COPY EVERYTHING BETWEEN THE LINES ===================="
+            echo "$B64"
+            echo "============================================================================"
+            echo ""
+            echo "## 📋 Save this as DEPLOYER_KEYPAIR secret" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$B64" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "→ [Add it here](https://github.com/${{ github.repository }}/settings/secrets/actions/new) (name: \`DEPLOYER_KEYPAIR\`)" >> $GITHUB_STEP_SUMMARY
           fi
           PUBKEY=$(solana address)
           echo "DEPLOYER_PUBKEY=$PUBKEY" >> $GITHUB_ENV
-          echo "## 🔑 Deployer pubkey: \`$PUBKEY\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Fund this address on devnet via [faucet.solana.com](https://faucet.solana.com) if it has < 5 SOL." >> $GITHUB_STEP_SUMMARY
+          echo "## 🔑 Deployer pubkey" >> $GITHUB_STEP_SUMMARY
+          echo "\`$PUBKEY\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Fund this address on devnet via [faucet.solana.com](https://faucet.solana.com) if it has < 2 SOL." >> $GITHUB_STEP_SUMMARY
 
       - name: Show deployer balance
         run: solana balance || true
