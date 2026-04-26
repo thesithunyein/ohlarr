@@ -1,0 +1,79 @@
+name: Live demo (buyer-agent → seller, on devnet)
+
+# Manually run this AFTER `Deploy to Solana devnet` has succeeded.
+# Produces verifiable on-chain transactions and uploads logs as proof.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Solana CLI (for keypair gen)
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @ohlarr/sdk build
+
+      - name: Generate buyer + seller wallets
+        run: |
+          mkdir -p keypairs
+          solana-keygen new --no-bip39-passphrase --outfile keypairs/buyer.json --force
+          solana-keygen new --no-bip39-passphrase --outfile keypairs/seller.json --force
+          BUYER=$(solana address -k keypairs/buyer.json)
+          SELLER=$(solana address -k keypairs/seller.json)
+          echo "BUYER=$BUYER"  >> $GITHUB_ENV
+          echo "SELLER=$SELLER" >> $GITHUB_ENV
+          echo "## Wallets" >> $GITHUB_STEP_SUMMARY
+          echo "- buyer:  \`$BUYER\`"  >> $GITHUB_STEP_SUMMARY
+          echo "- seller: \`$SELLER\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Airdrop devnet SOL (best-effort)
+        run: |
+          solana config set --url https://api.devnet.solana.com
+          solana airdrop 1 "$BUYER"  || true
+          solana airdrop 1 "$SELLER" || true
+
+      - name: Fetch deployed IDL
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: deploy-devnet.yml
+          name: ohlarr-idl
+          path: target/idl
+          if_no_artifact_found: warn
+
+      - name: Run seller demo (background) and buyer agent
+        run: |
+          set -euo pipefail
+          # Start seller in background; capture logs
+          ( cd apps/seller-demo && pnpm start > ../../seller.log 2>&1 ) &
+          SELLER_PID=$!
+          sleep 4
+          echo "::group::seller boot log"
+          cat seller.log || true
+          echo "::endgroup::"
+          # Run buyer (5 paid calls, then exits)
+          ( cd apps/buyer-agent && pnpm start | tee ../../buyer.log )
+          # Cleanup
+          kill $SELLER_PID 2>/dev/null || true
+
+      - name: Upload demo logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-logs
+          path: |
+            seller.log
+            buyer.log

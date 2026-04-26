@@ -1,0 +1,127 @@
+name: Deploy to Solana devnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      airdrop:
+        description: "Request a 2 SOL airdrop before deploying (only works if rate-limit allows)"
+        required: false
+        default: "true"
+        type: string
+
+permissions:
+  contents: write   # so the workflow can commit the program id back
+
+concurrency:
+  group: deploy-devnet
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor (avm)
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --force --locked
+          avm install 0.31.1
+          avm use 0.31.1
+
+      - name: Configure Solana for devnet
+        run: |
+          solana config set --url https://api.devnet.solana.com
+
+      - name: Restore deployer keypair (or create one)
+        env:
+          DEPLOYER_KEYPAIR: ${{ secrets.DEPLOYER_KEYPAIR }}
+        run: |
+          mkdir -p ~/.config/solana
+          if [ -n "$DEPLOYER_KEYPAIR" ]; then
+            echo "$DEPLOYER_KEYPAIR" > ~/.config/solana/id.json
+            echo "✅ Loaded deployer keypair from secret"
+          else
+            solana-keygen new --no-bip39-passphrase --outfile ~/.config/solana/id.json --force
+            echo "::warning ::No DEPLOYER_KEYPAIR secret set. Generated a new ephemeral one (won't survive between runs)."
+            echo "::warning ::Save this as a GitHub Secret named DEPLOYER_KEYPAIR to make deploys reproducible:"
+            cat ~/.config/solana/id.json
+          fi
+          PUBKEY=$(solana address)
+          echo "DEPLOYER_PUBKEY=$PUBKEY" >> $GITHUB_ENV
+          echo "## 🔑 Deployer pubkey: \`$PUBKEY\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Fund this address on devnet via [faucet.solana.com](https://faucet.solana.com) if it has < 5 SOL." >> $GITHUB_STEP_SUMMARY
+
+      - name: Show deployer balance
+        run: solana balance || true
+
+      - name: Optional airdrop (best-effort)
+        if: inputs.airdrop == 'true'
+        run: |
+          for i in 1 2; do
+            solana airdrop 2 && break || sleep 5
+          done
+          solana balance || true
+
+      - name: Restore program keypair (if provided)
+        env:
+          PROGRAM_KEYPAIR: ${{ secrets.PROGRAM_KEYPAIR }}
+        run: |
+          mkdir -p target/deploy
+          if [ -n "$PROGRAM_KEYPAIR" ]; then
+            echo "$PROGRAM_KEYPAIR" > target/deploy/ohlarr_payments-keypair.json
+            echo "✅ Loaded program keypair from secret"
+          fi
+
+      - name: Anchor build (creates program keypair if missing)
+        run: anchor build
+
+      - name: Capture program id
+        run: |
+          PROGRAM_ID=$(solana-keygen pubkey target/deploy/ohlarr_payments-keypair.json)
+          echo "PROGRAM_ID=$PROGRAM_ID" >> $GITHUB_ENV
+          echo "## 📦 Program id: \`$PROGRAM_ID\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Patch declare_id! and Anchor.toml
+        run: |
+          OLD="Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+          # also handle previously-committed real ids
+          CURRENT_DECLARE=$(grep -oE 'declare_id!\("[^"]+"' programs/ohlarr_payments/src/lib.rs | head -1 | sed 's/declare_id!("//; s/"$//')
+          for ID in "$OLD" "$CURRENT_DECLARE"; do
+            [ -n "$ID" ] || continue
+            sed -i "s|$ID|$PROGRAM_ID|g" programs/ohlarr_payments/src/lib.rs Anchor.toml .env.example apps/seller-demo/src/server.ts apps/buyer-agent/src/agent.ts packages/sdk/src/pdas.ts || true
+          done
+
+      - name: Rebuild with real program id
+        run: anchor build
+
+      - name: Deploy to devnet
+        run: |
+          anchor deploy --provider.cluster devnet || {
+            echo "::error ::Deploy failed. Most common cause: deployer wallet has insufficient SOL."
+            echo "Fund $DEPLOYER_PUBKEY at https://faucet.solana.com then re-run this workflow."
+            exit 1
+          }
+
+      - name: Upload IDL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ohlarr-idl
+          path: target/idl/ohlarr_payments.json
+
+      - name: Commit program id update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add programs/ohlarr_payments/src/lib.rs Anchor.toml .env.example apps/seller-demo/src/server.ts apps/buyer-agent/src/agent.ts packages/sdk/src/pdas.ts
+          git diff --staged --quiet || git commit -m "chore(deploy): program id $PROGRAM_ID on devnet [skip ci]"
+          git push
