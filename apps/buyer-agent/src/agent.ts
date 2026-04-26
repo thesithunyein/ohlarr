@@ -6,8 +6,8 @@
  */
 import 'dotenv/config';
 import fs from 'node:fs';
-import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { AnchorProvider, BN, Program, Wallet } from '@coral-xyz/anchor';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import { AnchorProvider, BN, Idl, Program, Wallet } from '@coral-xyz/anchor';
 import { OhlarrClient, PerSession } from '@ohlarr/sdk';
 
 const SELLER_URL = process.env.SELLER_URL ?? 'http://localhost:3001/api/premium';
@@ -32,31 +32,35 @@ async function main() {
   });
 
   // Lazy-load IDL produced by `anchor build`. The file is generated and not
-  // checked in — the agent assumes it's been built locally first.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // checked in — the agent assumes the program has been built first.
   const idl = JSON.parse(
     fs.readFileSync('./target/idl/ohlarr_payments.json', 'utf8'),
-  );
+  ) as Idl;
   const provider = new AnchorProvider(per.rollup, new Wallet(buyer), {
     commitment: 'confirmed',
   });
-  const program = new Program(idl, provider);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const program = new Program(idl, provider) as unknown as any;
 
   const ohlarr = new OhlarrClient({
     programId: PROGRAM_ID,
     buyer,
     network: 'solana-devnet',
     per,
-    buildSettleIx: ({ buyer, channel, buyerVault, sellerVault, amount, nonce, requestHash }) =>
+    buildSettleIx: async (args) =>
       program.methods
-        .settle(new BN(amount.toString()), new BN(nonce.toString()), Array.from(requestHash))
+        .settle(
+          new BN(args.amount.toString()),
+          new BN(args.nonce.toString()),
+          Array.from(args.requestHash),
+        )
         .accountsStrict({
-          channel,
-          buyerVault,
-          sellerVault,
-          buyer,
+          channel: args.channel,
+          buyerVault: args.buyerVault,
+          sellerVault: args.sellerVault,
+          buyer: args.buyer,
         })
-        .instruction() as unknown as TransactionInstruction,
+        .instruction(),
   });
 
   console.log(`[ohlarr buyer-agent] buyer: ${buyer.publicKey.toBase58()}`);

@@ -15,8 +15,9 @@ jobs:
         with:
           node-version: 20
       - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @ohlarr/sdk build
+      - run: pnpm -r --parallel build
       - run: pnpm -r lint
-      - run: pnpm -r build
 
   anchor-build:
     runs-on: ubuntu-latest

@@ -31,7 +31,7 @@ export interface OhlarrClientConfig {
     amount: bigint;
     nonce: bigint;
     requestHash: Uint8Array;
-  }) => TransactionInstruction;
+  }) => TransactionInstruction | Promise<TransactionInstruction>;
 }
 
 /**
@@ -91,7 +91,7 @@ export class OhlarrClient {
     const sig = nacl.sign.detached(challengeDigest, this.cfg.buyer.secretKey);
 
     // Settle inside the PER.
-    const ix = this.cfg.buildSettleIx({
+    const ix = await this.cfg.buildSettleIx({
       buyer: buyerPk,
       seller: seller ?? sellerPk,
       channel,
