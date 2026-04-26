@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["mocha", "chai", "node"],
+    "esModuleInterop": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "module": "CommonJS",
+    "moduleResolution": "node"
+  },
+  "include": ["tests/**/*"]
+}

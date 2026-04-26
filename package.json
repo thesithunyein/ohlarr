@@ -1,0 +1,26 @@
+{
+  "name": "ohlarr",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private payment rails for autonomous agents — built on Solana + MagicBlock PER + x402",
+  "homepage": "https://ohlarr.com",
+  "license": "MIT",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "anchor:build": "anchor build",
+    "anchor:deploy": "anchor deploy --provider.cluster devnet",
+    "anchor:test": "anchor test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  }
+}

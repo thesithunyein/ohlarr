@@ -1,0 +1,36 @@
+{
+  "name": "Ohlarr Dev (Solana + Anchor + Node)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.79"
+    },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "rust-analyzer.cargo.features": "all"
+      }
+    }
+  },
+  "forwardPorts": [3000, 3001, 8899, 8900],
+  "portsAttributes": {
+    "3000": { "label": "Web Dashboard", "onAutoForward": "notify" },
+    "3001": { "label": "Seller Demo API", "onAutoForward": "silent" }
+  },
+  "remoteUser": "vscode"
+}
