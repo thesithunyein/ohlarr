@@ -10,7 +10,7 @@ PROGRAM_ID=$(solana-keygen pubkey target/deploy/ohlarr_payments-keypair.json)
 echo "Program ID: $PROGRAM_ID"
 
 echo "==> Patching declare_id! and Anchor.toml"
-sed -i "s/OhLaRR1111111111111111111111111111111111111/$PROGRAM_ID/g" \
+sed -i "s/Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS/$PROGRAM_ID/g" \
   programs/ohlarr_payments/src/lib.rs Anchor.toml
 
 echo "==> Rebuilding with real program id"

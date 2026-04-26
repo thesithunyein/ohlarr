@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-ohlarr_payments = "OhLaRR1111111111111111111111111111111111111"
+ohlarr_payments = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [programs.localnet]
-ohlarr_payments = "OhLaRR1111111111111111111111111111111111111"
+ohlarr_payments = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [registry]
 url = "https://api.apr.dev"

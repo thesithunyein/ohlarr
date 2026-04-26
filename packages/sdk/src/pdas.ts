@@ -1,5 +1,10 @@
 import { PublicKey } from '@solana/web3.js';
 
+/** Default placeholder program id used during scaffolding. Override via env. */
+export const DEFAULT_PROGRAM_ID = new PublicKey(
+  'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS',
+);
+
 export const VAULT_SEED = Buffer.from('vault');
 export const CHANNEL_SEED = Buffer.from('channel');
 
