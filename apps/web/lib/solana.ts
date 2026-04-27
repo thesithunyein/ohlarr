@@ -57,31 +57,25 @@ export function shortAddr(addr: string, len = 4): string {
 
 // ── Account layout parsing (matches lib.rs structs) ─────────────────
 // Vault: [8 disc][32 owner][8 balance][1 bump] = 49
-export function parseVault(data: Buffer | Uint8Array) {
-  const view = new DataView(
-    data instanceof Uint8Array ? data.buffer : data.buffer,
-    data instanceof Uint8Array ? data.byteOffset : 0,
-    data.byteLength,
-  );
+export function parseVault(data: Uint8Array) {
+  const d = Uint8Array.from(data);
+  const view = new DataView(d.buffer, d.byteOffset, d.byteLength);
   return {
-    owner: new PublicKey(data.slice(8, 40)),
+    owner: new PublicKey(d.slice(8, 40)),
     balance: view.getBigUint64(40, true),
-    bump: data[48],
+    bump: d[48],
   };
 }
 
 // PaymentChannel: [8 disc][32 buyer][32 seller][8 nonce][8 total_settled][1 bump] = 89
-export function parseChannel(data: Buffer | Uint8Array) {
-  const view = new DataView(
-    data instanceof Uint8Array ? data.buffer : data.buffer,
-    data instanceof Uint8Array ? data.byteOffset : 0,
-    data.byteLength,
-  );
+export function parseChannel(data: Uint8Array) {
+  const d = Uint8Array.from(data);
+  const view = new DataView(d.buffer, d.byteOffset, d.byteLength);
   return {
-    buyer: new PublicKey(data.slice(8, 40)),
-    seller: new PublicKey(data.slice(40, 72)),
+    buyer: new PublicKey(d.slice(8, 40)),
+    seller: new PublicKey(d.slice(40, 72)),
     nonce: view.getBigUint64(72, true),
     totalSettled: view.getBigUint64(80, true),
-    bump: data[88],
+    bump: d[88],
   };
 }
