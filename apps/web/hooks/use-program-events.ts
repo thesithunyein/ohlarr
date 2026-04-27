@@ -32,35 +32,67 @@ function parseInstructionType(logs: string[]): OnChainEvent['type'] {
   return 'unknown';
 }
 
-/** Parse a PaymentSettled event from Anchor "Program data:" log line.
- *  Layout (after 8-byte discriminator):
- *    [32 channel][8 amount][8 nonce][32 request_hash]
+/** Parse Anchor "Program data:" log lines for event payloads.
+ *  ChannelOpened layout (after 8-byte disc): [32 channel][32 buyer][32 seller]
+ *  PaymentSettled layout (after 8-byte disc): [32 channel][8 amount][8 nonce][32 request_hash]
  */
-function parseSettledEvent(logs: string[]): {
+function parseEventData(logs: string[]): {
   channel: string;
   amount: bigint;
   nonce: bigint;
+  buyer: string;
+  seller: string;
 } | null {
   for (const log of logs) {
     if (!log.startsWith('Program data: ')) continue;
     try {
       const b64 = log.slice('Program data: '.length);
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      // Skip 8-byte discriminator
-      if (bytes.length < 8 + 32 + 8 + 8) continue;
-      const channel = new PublicKey(bytes.slice(8, 40)).toBase58();
+      if (bytes.length < 8 + 32) continue;
       const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-      const amount = view.getBigUint64(40, true);
-      const nonce = view.getBigUint64(48, true);
-      // Only accept if amount > 0 (filter out ChannelOpened events that have different layout)
-      if (amount > 0n) {
-        return { channel, amount, nonce };
+
+      // Try PaymentSettled first: disc(8) + channel(32) + amount(8) + nonce(8) + hash(32) = 88
+      if (bytes.length >= 88) {
+        const amount = view.getBigUint64(40, true);
+        if (amount > 0n) {
+          return {
+            channel: new PublicKey(bytes.slice(8, 40)).toBase58(),
+            amount,
+            nonce: view.getBigUint64(48, true),
+            buyer: '',
+            seller: '',
+          };
+        }
+      }
+
+      // Try ChannelOpened: disc(8) + channel(32) + buyer(32) + seller(32) = 104
+      if (bytes.length >= 104) {
+        return {
+          channel: new PublicKey(bytes.slice(8, 40)).toBase58(),
+          amount: 0n,
+          nonce: 0n,
+          buyer: new PublicKey(bytes.slice(40, 72)).toBase58(),
+          seller: new PublicKey(bytes.slice(72, 104)).toBase58(),
+        };
       }
     } catch {
       // Not a valid event payload — skip
     }
   }
   return null;
+}
+
+/** Extract account public keys from a transaction message */
+function getAccountKeysFromTx(tx: { transaction: { message: unknown } }): PublicKey[] {
+  const msg = tx.transaction.message as Record<string, unknown>;
+  // Versioned tx (v0) — getAccountKeys().staticAccountKeys
+  if (typeof msg.getAccountKeys === 'function') {
+    const keys = (msg.getAccountKeys as () => { staticAccountKeys: PublicKey[] })();
+    return keys.staticAccountKeys || [];
+  }
+  // Legacy tx — .accountKeys directly
+  if (Array.isArray(msg.accountKeys)) return msg.accountKeys as PublicKey[];
+  return [];
 }
 
 interface UseProgramEventsReturn {
@@ -112,24 +144,25 @@ export function useProgramEvents(): UseProgramEventsReturn {
 
           const logs = tx.meta?.logMessages || [];
           const type = parseInstructionType(logs);
+          const accountKeys = getAccountKeysFromTx(tx);
+          const eventData = parseEventData(logs);
 
-          // Get accounts from transaction
-          const accountKeys = tx.transaction.message.getAccountKeys
-            ? tx.transaction.message.getAccountKeys().staticAccountKeys
-            : (tx.transaction.message as unknown as { accountKeys: PublicKey[] }).accountKeys || [];
-
-          const settled = type === 'settle' ? parseSettledEvent(logs) : null;
+          // accountKeys[0] is always the fee payer (buyer / initiator)
+          const feePayer = accountKeys[0]?.toBase58() ?? '';
+          // For buyer/seller: use event data if available, else fee payer
+          const buyerAddr = eventData?.buyer || feePayer;
+          const sellerAddr = eventData?.seller || '';
 
           parsedEvents.push({
             id: sigInfo.signature,
             ts: (sigInfo.blockTime || 0) * 1000,
             txSig: sigInfo.signature,
             type,
-            buyer: accountKeys.length > 3 ? shortAddr(accountKeys[3]?.toBase58() ?? '') : '',
-            seller: accountKeys.length > 2 ? shortAddr(accountKeys[2]?.toBase58() ?? '') : '',
-            amount: settled ? Number(settled.amount) : 0,
-            channel: settled?.channel ?? '',
-            nonce: settled ? Number(settled.nonce) : 0,
+            buyer: buyerAddr ? shortAddr(buyerAddr) : '',
+            seller: sellerAddr ? shortAddr(sellerAddr) : shortAddr(feePayer),
+            amount: eventData ? Number(eventData.amount) : 0,
+            channel: eventData?.channel ?? '',
+            nonce: eventData ? Number(eventData.nonce) : 0,
           });
         } catch {
           // Skip individual tx errors
@@ -150,26 +183,49 @@ export function useProgramEvents(): UseProgramEventsReturn {
       const conn = getConnection();
       const subId = conn.onLogs(
         PROGRAM_ID,
-        (logInfo) => {
+        (logInfo: { err: unknown; signature: string; logs: string[] }) => {
           if (logInfo.err) return;
 
           const logs = logInfo.logs;
           const type = parseInstructionType(logs);
-          const settled = type === 'settle' ? parseSettledEvent(logs) : null;
+          const eventData = parseEventData(logs);
 
           const event: OnChainEvent = {
             id: logInfo.signature,
             ts: Date.now(),
             txSig: logInfo.signature,
             type,
-            buyer: '',
-            seller: '',
-            amount: settled ? Number(settled.amount) : 0,
-            channel: settled?.channel ?? '',
-            nonce: settled ? Number(settled.nonce) : 0,
+            buyer: eventData?.buyer ? shortAddr(eventData.buyer) : '',
+            seller: eventData?.seller ? shortAddr(eventData.seller) : '',
+            amount: eventData ? Number(eventData.amount) : 0,
+            channel: eventData?.channel ?? '',
+            nonce: eventData ? Number(eventData.nonce) : 0,
           };
 
-          setEvents((prev) => [event, ...prev].slice(0, 50));
+          // Backfill buyer/seller from tx if not in event data
+          if (!event.buyer || !event.seller) {
+            conn.getTransaction(logInfo.signature, {
+              maxSupportedTransactionVersion: 0,
+              commitment: 'confirmed',
+            }).then((tx) => {
+              if (!tx) return;
+              const keys = getAccountKeysFromTx(tx);
+              const feePayer = keys[0]?.toBase58() ?? '';
+              setEvents((prev: OnChainEvent[]) =>
+                prev.map((e) =>
+                  e.id === logInfo.signature
+                    ? {
+                        ...e,
+                        buyer: e.buyer || shortAddr(feePayer),
+                        seller: e.seller || shortAddr(feePayer),
+                      }
+                    : e,
+                ),
+              );
+            }).catch(() => {});
+          }
+
+          setEvents((prev: OnChainEvent[]) => [event, ...prev].slice(0, 50));
           setIsLive(true);
         },
         'confirmed',
