@@ -19,7 +19,7 @@
 
 use anchor_lang::prelude::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA");
 
 pub const VAULT_SEED: &[u8] = b"vault";
 pub const CHANNEL_SEED: &[u8] = b"channel";

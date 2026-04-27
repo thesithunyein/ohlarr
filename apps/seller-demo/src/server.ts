@@ -15,7 +15,7 @@ import { ohlarrMiddleware, PerSession } from '@ohlarr/sdk';
 const PORT = Number(process.env.X402_SELLER_PORT ?? 3001);
 const PRICE = BigInt(process.env.X402_PRICE_PER_CALL_LAMPORTS ?? 1000);
 const PROGRAM_ID = new PublicKey(
-  process.env.OHLARR_PROGRAM_ID ?? 'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS',
+  process.env.OHLARR_PROGRAM_ID ?? 'CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA',
 );
 
 function loadKeypair(path: string): Keypair {

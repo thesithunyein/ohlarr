@@ -12,7 +12,7 @@ import { OhlarrClient, PerSession } from '@ohlarr/sdk';
 
 const SELLER_URL = process.env.SELLER_URL ?? 'http://localhost:3001/api/premium';
 const PROGRAM_ID = new PublicKey(
-  process.env.OHLARR_PROGRAM_ID ?? 'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS',
+  process.env.OHLARR_PROGRAM_ID ?? 'CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA',
 );
 
 function loadKeypair(path: string): Keypair {
