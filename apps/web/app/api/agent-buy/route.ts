@@ -29,6 +29,22 @@ function disc(method: string): Buffer {
 }
 
 const IX_SETTLE = disc('settle');
+const IX_DEPOSIT = disc('deposit');
+
+function depositIx(owner: PublicKey, amount: bigint): TransactionInstruction {
+  const [vault] = vaultPda(owner);
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(amount);
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: vault, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.concat([IX_DEPOSIT, buf]),
+  });
+}
 
 function vaultPda(owner: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([VAULT_SEED, owner.toBuffer()], PROGRAM_ID);
@@ -151,18 +167,39 @@ export async function POST(req: Request) {
     const amount = BigInt(challenge.amount?.lamports || 1000);
     const reqHash = createHash('sha256').update(challenge.requestHash || 'demo').digest();
 
+    // Check buyer vault balance — top up if low
+    const [buyerVaultAddr] = vaultPda(buyer.publicKey);
+    const buyerVaultInfo = await conn.getAccountInfo(buyerVaultAddr);
+    let vaultBalance = 0n;
+    if (buyerVaultInfo && buyerVaultInfo.data.length >= 48) {
+      const view = new DataView(
+        buyerVaultInfo.data.buffer,
+        buyerVaultInfo.data.byteOffset,
+        buyerVaultInfo.data.byteLength,
+      );
+      vaultBalance = view.getBigUint64(40, true); // 8 disc + 32 owner = 40
+    }
+
+    const ixs = [];
+    // Top up vault if balance is below 10x the price (so we don't deposit every call)
+    if (vaultBalance < amount * 10n) {
+      const topUp = amount * 50n; // deposit 50x the price
+      ixs.push(depositIx(buyer.publicKey, topUp));
+      transcript.push({
+        step: '5a',
+        type: 'chain',
+        detail: `💰 Buyer vault low (${vaultBalance} lamports), depositing ${topUp} lamports`,
+      });
+    }
+    ixs.push(settleIx(buyer.publicKey, seller.publicKey, amount, nextNonce, reqHash));
+
     transcript.push({
       step: '5',
       type: 'chain',
-      detail: `Sending Settle ix to Solana devnet (${amount} lamports, nonce ${nextNonce})`,
+      detail: `Sending ${ixs.length === 2 ? 'Deposit + Settle' : 'Settle'} ix to Solana devnet (${amount} lamports, nonce ${nextNonce})`,
     });
 
-    const txSig = await sendTx(
-      conn,
-      [settleIx(buyer.publicKey, seller.publicKey, amount, nextNonce, reqHash)],
-      [buyer],
-      buyer.publicKey,
-    );
+    const txSig = await sendTx(conn, ixs, [buyer], buyer.publicKey);
 
     transcript.push({
       step: '6',
