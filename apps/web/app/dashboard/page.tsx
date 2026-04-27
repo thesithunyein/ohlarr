@@ -14,6 +14,9 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Bot,
+  Terminal,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -68,6 +71,15 @@ export default function Dashboard() {
   const [demoEvents, setDemoEvents] = useState<DemoEvent[]>([]);
   const [demoRunning, setDemoRunning] = useState(false);
   const [demoResult, setDemoResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [agentRunning, setAgentRunning] = useState(false);
+  const [agentResult, setAgentResult] = useState<{
+    transcript: { step: string; type: string; detail: string; data?: unknown }[];
+    finalPrice?: number;
+    txSig?: string;
+    explorer?: string;
+    durationMs?: number;
+    error?: string;
+  } | null>(null);
   const { events: onChainEvents, isLive, isLoading, programDeployed } = useProgramEvents();
 
   // Synthesize demo events as fallback
@@ -131,6 +143,24 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Watch a real AI agent perform an x402 purchase
+  const runAgent = useCallback(async () => {
+    setAgentRunning(true);
+    setAgentResult({ transcript: [] });
+    try {
+      const res = await fetch('/api/agent-buy', { method: 'POST' });
+      const data = await res.json();
+      setAgentResult(data);
+    } catch (err) {
+      setAgentResult({
+        transcript: [],
+        error: err instanceof Error ? err.message : 'Network error',
+      });
+    } finally {
+      setAgentRunning(false);
+    }
+  }, []);
+
   return (
     <>
       <GridBackground />
@@ -163,6 +193,15 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <motion.button
+              onClick={runAgent}
+              disabled={agentRunning}
+              whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-purple-500/40 text-purple-300 bg-purple-500/5 hover:bg-purple-500/15 transition-all disabled:opacity-50"
+            >
+              {agentRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
+              {agentRunning ? 'Agent paying...' : 'Watch AI Agent Buy'}
+            </motion.button>
             <motion.button
               onClick={runDemo}
               disabled={demoRunning}
@@ -404,6 +443,138 @@ export default function Dashboard() {
             <ExternalLink className="w-3 h-3" />
           </a>
         </motion.div>
+
+        {/* Agent transcript modal */}
+        <AnimatePresence>
+          {agentResult && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !agentRunning && setAgentResult(null)}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 20 }}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                className="w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl border border-purple-500/30 bg-zinc-950 glow"
+              >
+                <header className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-transparent">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-purple-500/15 grid place-items-center">
+                      <Bot className="w-5 h-5 text-purple-300" />
+                    </div>
+                    <div>
+                      <div className="font-semibold flex items-center gap-2">
+                        AI Agent x402 Purchase
+                        {agentRunning && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-300" />}
+                      </div>
+                      <div className="text-xs text-zinc-500">
+                        Live HTTP transcript · Solana devnet
+                        {agentResult.durationMs && ` · ${agentResult.durationMs}ms total`}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAgentResult(null)}
+                    disabled={agentRunning}
+                    className="w-8 h-8 rounded-lg hover:bg-white/5 grid place-items-center text-zinc-500 hover:text-white disabled:opacity-30"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </header>
+
+                {agentResult.error ? (
+                  <div className="p-6 text-red-400 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5" />
+                    <div>
+                      <div className="font-semibold">Agent failed</div>
+                      <div className="text-sm text-zinc-400 mt-1 font-mono">{agentResult.error}</div>
+                    </div>
+                  </div>
+                ) : agentResult.transcript.length === 0 ? (
+                  <div className="p-12 text-center text-zinc-500">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-purple-300" />
+                    Agent initializing...
+                  </div>
+                ) : (
+                  <div className="overflow-auto max-h-[60vh] p-6 font-mono text-xs space-y-3 bg-black/40">
+                    {agentResult.transcript.map((line, i) => {
+                      const color =
+                        line.type === 'http'
+                          ? 'text-cyan-300'
+                          : line.type === 'chain'
+                            ? 'text-emerald-300'
+                            : 'text-zinc-300';
+                      const bgColor =
+                        line.type === 'http'
+                          ? 'bg-cyan-500/5 border-cyan-500/20'
+                          : line.type === 'chain'
+                            ? 'bg-emerald-500/5 border-emerald-500/20'
+                            : 'bg-zinc-800/30 border-zinc-700/40';
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className={`rounded-lg border ${bgColor} p-3`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-zinc-600 text-[10px] uppercase tracking-wider">
+                              [{line.type}]
+                            </span>
+                            <span className={`flex-1 ${color}`}>{line.detail}</span>
+                          </div>
+                          {line.data !== undefined && line.data !== null ? (
+                            <pre className="mt-2 pl-4 text-[10px] text-zinc-500 overflow-auto whitespace-pre-wrap break-all">
+                              {typeof line.data === 'string'
+                                ? line.data
+                                : JSON.stringify(line.data, null, 2)}
+                            </pre>
+                          ) : null}
+                        </motion.div>
+                      );
+                    })}
+
+                    {agentResult.finalPrice && agentResult.txSig && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: agentResult.transcript.length * 0.04 + 0.2 }}
+                        className="rounded-xl border-2 border-purple-500/40 bg-gradient-to-br from-purple-500/10 to-emerald-500/10 p-4 mt-4"
+                      >
+                        <div className="text-xs text-zinc-400 mb-1">Final result</div>
+                        <div className="text-2xl font-bold text-white">
+                          BTC/USD = ${agentResult.finalPrice.toLocaleString()}
+                        </div>
+                        <a
+                          href={agentResult.explorer}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-3 text-xs text-purple-300 hover:text-purple-200"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          Verified on Solana Explorer
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </motion.div>
+                    )}
+                  </div>
+                )}
+
+                <footer className="px-6 py-3 border-t border-zinc-800 bg-zinc-900/40 flex items-center justify-between text-xs text-zinc-500">
+                  <span className="flex items-center gap-1.5">
+                    <Terminal className="w-3 h-3" /> x402 + Ohlarr PER + Solana devnet
+                  </span>
+                  <span>{agentResult.transcript.length} steps</span>
+                </footer>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </>
   );

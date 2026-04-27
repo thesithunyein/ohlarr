@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Lock, Zap, Bot, ShieldCheck, ArrowRight, Github, ExternalLink } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Lock, Zap, Bot, ShieldCheck, ArrowRight, Github, ExternalLink, Activity, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { RabbitLogo } from '@/components/rabbit-logo';
 import { GridBackground, FloatingParticles } from '@/components/animated-bg';
@@ -83,6 +84,9 @@ export default function LandingPage() {
             <CodeShowcase />
           </motion.div>
         </motion.section>
+
+        {/* Live stats banner — proves it's real */}
+        <LiveStats />
 
         {/* Features */}
         <motion.section
@@ -292,6 +296,119 @@ function CodeShowcase() {
 {'\n  '}(req, res) {'=>'} res.json({'{'} oracle: <span className="text-emerald-400">{`'BTC/USD'`}</span>, price: <span className="text-amber-300">99421.18</span> {'}'}),
 {'\n'});
         </code></pre>
+      </div>
+    </div>
+  );
+}
+
+function LiveStats() {
+  const [stats, setStats] = useState<{
+    deployed?: boolean;
+    totalTxns?: number;
+    successful?: number;
+    programId?: string;
+    latestTxSig?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetch('/api/stats')
+        .then((r) => r.json())
+        .then((d) => !cancelled && setStats(d))
+        .catch(() => {});
+    };
+    load();
+    const t = setInterval(load, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, []);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5 }}
+      className="mt-20"
+    >
+      <div className="rounded-2xl border border-accent2/30 bg-gradient-to-br from-accent2/5 via-transparent to-accent/5 p-6 md:p-8">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full bg-accent2 live-dot" />
+          <span className="text-xs uppercase tracking-widest text-accent2 font-medium">
+            Live on Solana devnet
+          </span>
+          {stats?.deployed && (
+            <span className="ml-auto inline-flex items-center gap-1 text-xs text-accent2">
+              <CheckCircle2 className="w-3 h-3" /> Program deployed
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <StatBlock
+            label="Real settlements"
+            value={stats?.successful != null ? stats.successful.toLocaleString() : '—'}
+            highlight
+          />
+          <StatBlock
+            label="Total program txns"
+            value={stats?.totalTxns != null ? stats.totalTxns.toLocaleString() : '—'}
+          />
+          <StatBlock label="Network" value="Solana devnet" />
+          <StatBlock label="TEE runtime" value="MagicBlock PER" />
+        </div>
+        <div className="mt-5 pt-5 border-t border-zinc-800/60 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500 font-mono">
+          <span className="flex items-center gap-1.5">
+            <Activity className="w-3 h-3" /> Auto-refresh every 15s
+          </span>
+          {stats?.programId && (
+            <a
+              href={`https://explorer.solana.com/address/${stats.programId}?cluster=devnet`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-300 inline-flex items-center gap-1"
+            >
+              Program: {stats.programId.slice(0, 8)}...{stats.programId.slice(-4)}
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+          {stats?.latestTxSig && (
+            <a
+              href={`https://explorer.solana.com/tx/${stats.latestTxSig}?cluster=devnet`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-300 inline-flex items-center gap-1"
+            >
+              Latest tx: {stats.latestTxSig.slice(0, 8)}...
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function StatBlock({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-zinc-500">{label}</div>
+      <div
+        className={`mt-1.5 text-2xl md:text-3xl font-bold tabular-nums ${
+          highlight ? 'text-accent2' : 'text-white'
+        }`}
+      >
+        {value}
       </div>
     </div>
   );
