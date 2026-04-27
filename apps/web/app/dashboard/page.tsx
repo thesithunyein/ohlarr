@@ -1,13 +1,28 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Eye, EyeOff, Lock, Unlock, Activity, ArrowLeft, Radio } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  Unlock,
+  Activity,
+  ArrowLeft,
+  Radio,
+  ExternalLink,
+  Zap,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { RabbitLogo } from '@/components/rabbit-logo';
 import { GridBackground } from '@/components/animated-bg';
+import { useProgramEvents, type OnChainEvent } from '@/hooks/use-program-events';
+import { explorerTxUrl, explorerAddrUrl, shortAddr, PROGRAM_ID } from '@/lib/solana';
 
-type Event = {
+// ── Synthesized demo data (fallback when program not deployed yet) ──
+type DemoEvent = {
   id: string;
   ts: number;
   channel: string;
@@ -16,7 +31,10 @@ type Event = {
   amount: number;
   api: string;
   txSig: string;
+  isReal: false;
 };
+
+type UnifiedEvent = (OnChainEvent & { isReal: true; api: string }) | DemoEvent;
 
 const APIS = [
   '/v1/oracle/BTC-USD',
@@ -45,13 +63,18 @@ function shortB58(): string {
 
 export default function Dashboard() {
   const [authorized, setAuthorized] = useState(false);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [demoEvents, setDemoEvents] = useState<DemoEvent[]>([]);
+  const [demoRunning, setDemoRunning] = useState(false);
+  const [demoResult, setDemoResult] = useState<{ success: boolean; message: string } | null>(null);
+  const { events: onChainEvents, isLive, isLoading, programDeployed } = useProgramEvents();
 
+  // Synthesize demo events as fallback
   useEffect(() => {
+    if (programDeployed && onChainEvents.length > 0) return; // Real data available
     const t = setInterval(() => {
       const buyer = AGENTS.filter((a) => a.kind === 'buyer');
       const seller = AGENTS.filter((a) => a.kind === 'seller');
-      const ev: Event = {
+      const ev: DemoEvent = {
         id: crypto.randomUUID(),
         ts: Date.now(),
         channel: shortB58(),
@@ -60,13 +83,50 @@ export default function Dashboard() {
         amount: 100 + Math.floor(Math.random() * 9000),
         api: rand(APIS),
         txSig: shortB58() + shortB58(),
+        isReal: false,
       };
-      setEvents((p) => [ev, ...p].slice(0, 20));
+      setDemoEvents((p) => [ev, ...p].slice(0, 20));
     }, 1100);
     return () => clearInterval(t);
-  }, []);
+  }, [programDeployed, onChainEvents.length]);
+
+  // Merge real + demo events
+  const events: UnifiedEvent[] = useMemo(() => {
+    if (onChainEvents.length > 0) {
+      return onChainEvents.map((e) => ({
+        ...e,
+        isReal: true as const,
+        api: rand(APIS),
+      }));
+    }
+    return demoEvents;
+  }, [onChainEvents, demoEvents]);
+
+  const mode = onChainEvents.length > 0 ? 'live' : 'demo';
 
   const toggle = useCallback(() => setAuthorized((v) => !v), []);
+
+  // Trigger real devnet transaction
+  const runDemo = useCallback(async () => {
+    setDemoRunning(true);
+    setDemoResult(null);
+    try {
+      const res = await fetch('/api/demo', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setDemoResult({
+          success: true,
+          message: `Settled ${data.amount} lamports! Tx: ${shortAddr(data.transactions[data.transactions.length - 1]?.sig || '', 8)}`,
+        });
+      } else {
+        setDemoResult({ success: false, message: data.error || 'Failed' });
+      }
+    } catch (err) {
+      setDemoResult({ success: false, message: err instanceof Error ? err.message : 'Network error' });
+    } finally {
+      setDemoRunning(false);
+    }
+  }, []);
 
   return (
     <>
@@ -86,23 +146,63 @@ export default function Dashboard() {
             </Link>
             <span className="text-zinc-700">|</span>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-accent2 live-dot" />
-              <span className="text-sm text-zinc-400">Live Stream</span>
+              {mode === 'live' ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-accent2 live-dot" />
+                  <span className="text-sm text-accent2 font-medium">LIVE</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-amber-400 live-dot" />
+                  <span className="text-sm text-amber-400 font-medium">DEMO</span>
+                </>
+              )}
             </div>
           </div>
-          <motion.button
-            onClick={toggle}
-            whileTap={{ scale: 0.97 }}
-            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
-              authorized
-                ? 'bg-accent2/15 text-accent2 border border-accent2/30 hover:bg-accent2/25'
-                : 'bg-accent text-white hover:bg-accent/90 glow'
-            }`}
-          >
-            {authorized ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            {authorized ? 'Lock view' : 'Unlock with Permission key'}
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <motion.button
+              onClick={runDemo}
+              disabled={demoRunning}
+              whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-accent2/30 text-accent2 hover:bg-accent2/10 transition-all disabled:opacity-50"
+            >
+              {demoRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              Run Real Tx
+            </motion.button>
+            <motion.button
+              onClick={toggle}
+              whileTap={{ scale: 0.97 }}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                authorized
+                  ? 'bg-accent2/15 text-accent2 border border-accent2/30 hover:bg-accent2/25'
+                  : 'bg-accent text-white hover:bg-accent/90 glow'
+              }`}
+            >
+              {authorized ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              {authorized ? 'Lock view' : 'Unlock with Permission key'}
+            </motion.button>
+          </div>
         </motion.nav>
+
+        {/* Demo result toast */}
+        <AnimatePresence>
+          {demoResult && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`mb-4 rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${
+                demoResult.success
+                  ? 'border-accent2/30 bg-accent2/5 text-accent2'
+                  : 'border-red-500/30 bg-red-500/5 text-red-400'
+              }`}
+            >
+              {demoResult.success ? <Zap className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+              {demoResult.message}
+              <button onClick={() => setDemoResult(null)} className="ml-auto text-zinc-500 hover:text-white">&times;</button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Header */}
         <motion.div
@@ -117,8 +217,16 @@ export default function Dashboard() {
             Live agent payment stream
           </h1>
           <p className="text-zinc-400 mt-2 max-w-2xl">
-            Same on-chain events. Two views. The left stays encrypted to the world; the right is decrypted by your Permission key.
+            {mode === 'live'
+              ? 'Showing real Solana devnet transactions. Two views \u2014 the left stays encrypted; the right is decrypted by your Permission key.'
+              : 'Simulated stream (program not yet deployed). Click "Run Real Tx" to trigger real devnet transactions, or deploy the program first.'}
           </p>
+          {isLoading && (
+            <div className="flex items-center gap-2 mt-2 text-sm text-zinc-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Connecting to Solana devnet...
+            </div>
+          )}
         </motion.div>
 
         {/* Dual panes */}
@@ -145,8 +253,17 @@ export default function Dashboard() {
                   <Row
                     ts={e.ts}
                     left={<span className="text-zinc-500">PER commit</span>}
-                    middle={<span className="encrypted text-zinc-500">{e.channel}</span>}
-                    right={<span className="encrypted text-zinc-500">{'\u2588\u2588\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588'}</span>}
+                    middle={
+                      <span className="encrypted text-zinc-500">
+                        {e.isReal ? shortAddr(e.channel || e.txSig, 6) : (e as DemoEvent).channel}
+                      </span>
+                    }
+                    right={
+                      <span className="encrypted text-zinc-500">
+                        {'\u2588\u2588\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588'}
+                      </span>
+                    }
+                    txSig={e.isReal ? e.txSig : undefined}
                   />
                 </motion.div>
               ))}
@@ -178,23 +295,32 @@ export default function Dashboard() {
                           <span className="text-accent">{e.seller}</span>
                         </span>
                       ) : (
-                        <span className="encrypted text-zinc-600">{'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span>
+                        <span className="encrypted text-zinc-600">
+                          {'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}
+                        </span>
                       )
                     }
                     middle={
                       authorized ? (
                         <span className="text-zinc-300">{e.api}</span>
                       ) : (
-                        <span className="encrypted text-zinc-600">{'\u2588\u2588\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588 \u2588\u2588\u2588'}</span>
+                        <span className="encrypted text-zinc-600">
+                          {'\u2588\u2588\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588 \u2588\u2588\u2588'}
+                        </span>
                       )
                     }
                     right={
                       authorized ? (
-                        <span className="text-amber-300 font-medium">{e.amount.toLocaleString()} lamports</span>
+                        <span className="text-amber-300 font-medium">
+                          {e.amount.toLocaleString()} lamports
+                        </span>
                       ) : (
-                        <span className="encrypted text-zinc-600">{'\u2588\u2588\u2588\u2588\u2588'}</span>
+                        <span className="encrypted text-zinc-600">
+                          {'\u2588\u2588\u2588\u2588\u2588'}
+                        </span>
                       )
                     }
+                    txSig={e.isReal ? e.txSig : undefined}
                   />
                 </motion.div>
               ))}
@@ -207,7 +333,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Stats events={events} authorized={authorized} />
+          <Stats events={events} authorized={authorized} programDeployed={programDeployed} />
         </motion.div>
 
         {/* Network info bar */}
@@ -221,7 +347,15 @@ export default function Dashboard() {
             <Radio className="w-3 h-3" /> RPC: devnet
           </span>
           <span>PER: devnet-tee.magicblock.app</span>
-          <span>Program: CmHUW...zdLA</span>
+          <a
+            href={explorerAddrUrl(PROGRAM_ID.toBase58())}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-zinc-400 transition-colors"
+          >
+            Program: {shortAddr(PROGRAM_ID.toBase58(), 4)}
+            <ExternalLink className="w-3 h-3" />
+          </a>
         </motion.div>
       </main>
     </>
@@ -285,23 +419,48 @@ function Row({
   left,
   middle,
   right,
+  txSig,
 }: {
   ts: number;
   left: React.ReactNode;
   middle: React.ReactNode;
   right: React.ReactNode;
+  txSig?: string;
 }) {
   return (
-    <div className="px-5 py-3 grid grid-cols-[7ch_1fr_2fr_auto] gap-4 items-center text-sm font-mono hover:bg-white/[0.02] transition-colors">
-      <span className="text-zinc-600 text-xs tabular-nums">{new Date(ts).toLocaleTimeString().slice(0, 8)}</span>
+    <div className="px-5 py-3 grid grid-cols-[7ch_1fr_2fr_auto] gap-4 items-center text-sm font-mono hover:bg-white/[0.02] transition-colors group">
+      <span className="text-zinc-600 text-xs tabular-nums">
+        {new Date(ts).toLocaleTimeString().slice(0, 8)}
+      </span>
       <span>{left}</span>
       <span className="truncate">{middle}</span>
-      <span>{right}</span>
+      <span className="flex items-center gap-2">
+        {right}
+        {txSig && (
+          <a
+            href={explorerTxUrl(txSig)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            title="View on Solana Explorer"
+          >
+            <ExternalLink className="w-3 h-3 text-zinc-600 hover:text-accent2" />
+          </a>
+        )}
+      </span>
     </div>
   );
 }
 
-function Stats({ events, authorized }: { events: Event[]; authorized: boolean }) {
+function Stats({
+  events,
+  authorized,
+  programDeployed,
+}: {
+  events: UnifiedEvent[];
+  authorized: boolean;
+  programDeployed: boolean;
+}) {
   const totals = useMemo(() => {
     const total = events.reduce((s, e) => s + e.amount, 0);
     return { total, count: events.length };
@@ -312,22 +471,60 @@ function Stats({ events, authorized }: { events: Event[]; authorized: boolean })
       <Stat label="Settled events" value={String(totals.count)} accent={false} />
       <Stat
         label="Total volume"
-        value={authorized ? `${totals.total.toLocaleString()} lamports` : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}
+        value={
+          authorized
+            ? `${totals.total.toLocaleString()} lamports`
+            : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'
+        }
         accent={authorized}
       />
-      <Stat label="Network" value="Solana devnet" accent={false} />
-      <Stat label="TEE runtime" value="MagicBlock PER" accent={false} />
+      <Stat
+        label="Network"
+        value="Solana devnet"
+        accent={false}
+        link={explorerAddrUrl(PROGRAM_ID.toBase58())}
+      />
+      <Stat
+        label="Status"
+        value={programDeployed ? 'Program deployed' : 'Not deployed'}
+        accent={programDeployed}
+      />
     </div>
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent: boolean }) {
-  return (
-    <div className={`rounded-xl border bg-haze/80 backdrop-blur-sm px-5 py-4 transition-all duration-300 ${
-      accent ? 'border-accent2/30 glow-green' : 'border-zinc-800'
-    }`}>
-      <div className="text-[10px] uppercase tracking-widest text-zinc-500">{label}</div>
-      <div className={`mt-1.5 text-lg font-bold tabular-nums ${accent ? 'text-accent2' : ''}`}>{value}</div>
+function Stat({
+  label,
+  value,
+  accent,
+  link,
+}: {
+  label: string;
+  value: string;
+  accent: boolean;
+  link?: string;
+}) {
+  const inner = (
+    <div
+      className={`rounded-xl border bg-haze/80 backdrop-blur-sm px-5 py-4 transition-all duration-300 ${
+        accent ? 'border-accent2/30 glow-green' : 'border-zinc-800'
+      }`}
+    >
+      <div className="text-[10px] uppercase tracking-widest text-zinc-500 flex items-center gap-1">
+        {label}
+        {link && <ExternalLink className="w-2.5 h-2.5" />}
+      </div>
+      <div className={`mt-1.5 text-lg font-bold tabular-nums ${accent ? 'text-accent2' : ''}`}>
+        {value}
+      </div>
     </div>
   );
+  if (link) {
+    return (
+      <a href={link} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+        {inner}
+      </a>
+    );
+  }
+  return inner;
 }
