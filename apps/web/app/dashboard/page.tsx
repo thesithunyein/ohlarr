@@ -13,6 +13,7 @@ import {
   Zap,
   Loader2,
   AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -31,6 +32,7 @@ type DemoEvent = {
   amount: number;
   api: string;
   txSig: string;
+  type: 'settle';
   isReal: false;
 };
 
@@ -83,6 +85,7 @@ export default function Dashboard() {
         amount: 100 + Math.floor(Math.random() * 9000),
         api: rand(APIS),
         txSig: shortB58() + shortB58(),
+        type: 'settle',
         isReal: false,
       };
       setDemoEvents((p) => [ev, ...p].slice(0, 20));
@@ -238,43 +241,79 @@ export default function Dashboard() {
         >
           <Pane
             title="Public Solana observer"
-            subtitle="Anyone watching the chain. No Permission membership."
+            subtitle="What every node, indexer & MEV bot sees on devnet."
             icon={<EyeOff className="w-4 h-4" />}
             tone="muted"
           >
             <AnimatePresence initial={false}>
-              {events.map((e) => (
-                <motion.div
-                  key={e.id}
-                  initial={{ opacity: 0, x: -20, height: 0 }}
-                  animate={{ opacity: 1, x: 0, height: 'auto' }}
-                  transition={{ duration: 0.3, ease: 'easeOut' }}
-                >
-                  <Row
-                    ts={e.ts}
-                    left={
-                      <span className="text-zinc-600">
-                        <span className="encrypted text-zinc-600">{'\u2588\u2588\u2588\u2588'}</span>
-                        <span className="text-zinc-700 mx-1">{'\u2192'}</span>
-                        <span className="encrypted text-zinc-600">{'\u2588\u2588\u2588\u2588'}</span>
+              {events.map((e) => {
+                const ixName =
+                  e.type === 'settle'
+                    ? 'Settle'
+                    : e.type === 'channel_opened'
+                      ? 'OpenChannel'
+                      : e.type === 'deposit'
+                        ? 'Deposit'
+                        : e.type === 'init_vault'
+                          ? 'InitializeVault'
+                          : 'Unknown';
+                return (
+                  <motion.div
+                    key={e.id}
+                    initial={{ opacity: 0, x: -20, height: 0 }}
+                    animate={{ opacity: 1, x: 0, height: 'auto' }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    className="px-5 py-3 hover:bg-white/[0.02] transition-colors group border-b border-zinc-900/50"
+                  >
+                    <div className="flex items-center justify-between gap-3 text-xs font-mono">
+                      <div className="flex items-center gap-2">
+                        <span className="text-zinc-600 tabular-nums">
+                          {new Date(e.ts).toLocaleTimeString().slice(0, 8)}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-zinc-800/60 text-zinc-400 text-[10px]">
+                          {ixName}
+                        </span>
+                        <span className="flex items-center gap-1 text-emerald-600/70 text-[10px]">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> verified
+                        </span>
+                      </div>
+                      {e.isReal && e.txSig && (
+                        <a
+                          href={explorerTxUrl(e.txSig)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-500 hover:text-accent2 transition-colors flex items-center gap-1"
+                        >
+                          {shortAddr(e.txSig, 6)}
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                    </div>
+                    <div className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs font-mono">
+                      <span className="text-zinc-700">from</span>
+                      <span className="encrypted text-zinc-600 tracking-widest">
+                        {'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}
                       </span>
-                    }
-                    middle={
+                      <span className="text-zinc-700">to</span>
+                      <span className="encrypted text-zinc-600 tracking-widest">
+                        {'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}
+                      </span>
+                      <span className="text-zinc-700">api</span>
                       <span className="encrypted text-zinc-600">
-                        {e.isReal
-                          ? `PER:${shortAddr(e.channel || e.txSig, 6)}`
-                          : `PER:${(e as DemoEvent).channel}`}
+                        {'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}
                       </span>
-                    }
-                    right={
-                      <span className="encrypted text-zinc-600 tracking-wider">
-                        {'\u2588\u2588\u2588\u2588\u2588 lamports'}
+                      <span className="text-zinc-700">amount</span>
+                      <span className="encrypted text-zinc-600">
+                        {'\u2588\u2588\u2588\u2588\u2588\u2588\u2588 lamports'}
                       </span>
-                    }
-                    txSig={e.isReal ? e.txSig : undefined}
-                  />
-                </motion.div>
-              ))}
+                      <span className="text-zinc-700">commit</span>
+                      <span className="text-zinc-500 truncate">
+                        {e.isReal ? shortAddr(e.channel || e.txSig, 8) : 'PER:rollup-state-root'}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </Pane>
 
