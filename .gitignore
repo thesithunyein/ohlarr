@@ -1,5 +1,7 @@
 # dependencies
-node_modules/
+node_modules
+demo.json
+*.keypair/
 .pnpm-store/
 
 # build
