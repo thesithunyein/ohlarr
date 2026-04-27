@@ -252,15 +252,23 @@ export default function Dashboard() {
                 >
                   <Row
                     ts={e.ts}
-                    left={<span className="text-zinc-500">PER commit</span>}
+                    left={
+                      <span className="text-zinc-600">
+                        <span className="encrypted text-zinc-600">{'\u2588\u2588\u2588\u2588'}</span>
+                        <span className="text-zinc-700 mx-1">{'\u2192'}</span>
+                        <span className="encrypted text-zinc-600">{'\u2588\u2588\u2588\u2588'}</span>
+                      </span>
+                    }
                     middle={
-                      <span className="encrypted text-zinc-500">
-                        {e.isReal ? shortAddr(e.channel || e.txSig, 6) : (e as DemoEvent).channel}
+                      <span className="encrypted text-zinc-600">
+                        {e.isReal
+                          ? `PER:${shortAddr(e.channel || e.txSig, 6)}`
+                          : `PER:${(e as DemoEvent).channel}`}
                       </span>
                     }
                     right={
-                      <span className="encrypted text-zinc-500">
-                        {'\u2588\u2588\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588'}
+                      <span className="encrypted text-zinc-600 tracking-wider">
+                        {'\u2588\u2588\u2588\u2588\u2588 lamports'}
                       </span>
                     }
                     txSig={e.isReal ? e.txSig : undefined}
