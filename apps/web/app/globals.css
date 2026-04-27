@@ -6,20 +6,102 @@
   color-scheme: dark;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body {
   background: #0a0a0f;
   color: #ededed;
 }
 
+/* Glow effects */
 .glow {
   box-shadow:
     0 0 0 1px rgba(124, 58, 237, 0.3),
     0 0 40px -8px rgba(124, 58, 237, 0.5);
 }
 
+.glow-green {
+  box-shadow:
+    0 0 0 1px rgba(20, 241, 149, 0.3),
+    0 0 40px -8px rgba(20, 241, 149, 0.3);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(19, 19, 26, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Encrypted text */
 .encrypted {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-jetbrains), 'JetBrains Mono', ui-monospace, monospace;
   letter-spacing: 0.04em;
-  filter: blur(0.4px);
+  filter: blur(0.5px);
   user-select: none;
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, #7c3aed 0%, #14F195 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animated gradient border */
+.gradient-border {
+  position: relative;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #7c3aed, #14F195, #7c3aed);
+  background-size: 300% 300%;
+  animation: gradient 8s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Hover card lift */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.2),
+    0 12px 40px -8px rgba(124, 58, 237, 0.2);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.5);
+}
+
+/* Pulse dot */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+.live-dot {
+  animation: livePulse 2s ease-in-out infinite;
 }

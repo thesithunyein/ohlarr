@@ -1,99 +1,251 @@
+'use client';
+
 import Link from 'next/link';
-import { Lock, Zap, Bot, ShieldCheck, ArrowRight, Github } from 'lucide-react';
+import { Lock, Zap, Bot, ShieldCheck, ArrowRight, Github, ExternalLink } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { RabbitLogo } from '@/components/rabbit-logo';
+import { GridBackground, FloatingParticles } from '@/components/animated-bg';
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.12, duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+  }),
+};
+
+const stagger = {
+  visible: { transition: { staggerChildren: 0.1 } },
+};
 
 export default function LandingPage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <Header />
+    <>
+      <GridBackground />
+      <FloatingParticles />
+      <main className="relative mx-auto max-w-6xl px-6 py-8">
+        <Header />
 
-      <section className="mt-16 md:mt-28 grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <span className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-accent">
-            <Lock className="w-3.5 h-3.5" /> Privacy Track · Colosseum Hackathon
-          </span>
-          <h1 className="mt-4 text-5xl md:text-6xl font-semibold leading-[1.05]">
-            Private payment rails<br />
-            <span className="bg-gradient-to-r from-accent to-accent2 bg-clip-text text-transparent">
-              for autonomous agents.
-            </span>
-          </h1>
-          <p className="mt-6 text-lg text-zinc-400 max-w-lg">
-            Ohlarr drops into any HTTP API in 4 lines of code. Powered by{' '}
-            <strong className="text-white">x402</strong> and{' '}
-            <strong className="text-white">MagicBlock Private Ephemeral Rollups</strong>{' '}
-            (Intel TDX TEE) on Solana — amounts and intent stay encrypted, settlement stays verifiable.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-accent text-white font-medium hover:bg-accent/90 transition glow"
+        {/* Hero */}
+        <motion.section
+          initial="hidden"
+          animate="visible"
+          variants={stagger}
+          className="mt-16 md:mt-24 grid md:grid-cols-2 gap-12 items-center"
+        >
+          <div>
+            <motion.span
+              variants={fadeUp}
+              custom={0}
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-accent border border-accent/20 rounded-full px-3 py-1.5 bg-accent/5"
             >
-              See it live <ArrowRight className="w-4 h-4" />
-            </Link>
-            <a
-              href="https://github.com/thesithunyein/ohlarr"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-zinc-800 hover:border-zinc-600 transition"
+              <Lock className="w-3 h-3" /> Privacy Track · Colosseum Hackathon
+            </motion.span>
+            <motion.h1
+              variants={fadeUp}
+              custom={1}
+              className="mt-6 text-5xl md:text-[3.5rem] lg:text-6xl font-bold leading-[1.05] tracking-tight"
             >
-              <Github className="w-4 h-4" /> View source
-            </a>
+              Private payment rails{' '}
+              <span className="text-gradient">for autonomous agents.</span>
+            </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              className="mt-6 text-lg text-zinc-400 max-w-lg leading-relaxed"
+            >
+              Ohlarr drops into any HTTP API in 4 lines of code. Powered by{' '}
+              <strong className="text-white">x402</strong> and{' '}
+              <strong className="text-white">MagicBlock Private Ephemeral Rollups</strong>{' '}
+              (Intel TDX TEE) on Solana — amounts and intent stay encrypted, settlement stays verifiable.
+            </motion.p>
+            <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/dashboard"
+                className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-accent text-white font-medium hover:bg-accent/90 transition-all duration-300 glow hover:scale-[1.02]"
+              >
+                See it live
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+              <a
+                href="https://github.com/thesithunyein/ohlarr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-zinc-800 hover:border-zinc-600 transition-all duration-300 hover:bg-zinc-900/50"
+              >
+                <Github className="w-4 h-4" /> View source
+              </a>
+            </motion.div>
           </div>
-        </div>
 
-        <CodeShowcase />
-      </section>
+          <motion.div variants={fadeUp} custom={2}>
+            <CodeShowcase />
+          </motion.div>
+        </motion.section>
 
-      <section className="mt-28 grid md:grid-cols-3 gap-6">
-        <Feature
-          icon={<Lock className="w-5 h-5" />}
-          title="Encrypted by default"
-          body="State lives inside Intel TDX. Public observers see opaque commits — only Permission members read amounts."
-        />
-        <Feature
-          icon={<Zap className="w-5 h-5" />}
-          title="One-RTT payments"
-          body="Settle inside the Ephemeral Rollup at L1.5 latency. No waiting for finality on the base layer."
-        />
-        <Feature
-          icon={<Bot className="w-5 h-5" />}
-          title="Agent-native"
-          body="Standard HTTP 402. Drop a middleware on the seller, wrap fetch() on the buyer. No custom protocols."
-        />
-      </section>
+        {/* Features */}
+        <motion.section
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={stagger}
+          className="mt-28 grid md:grid-cols-3 gap-6"
+        >
+          <Feature
+            index={0}
+            icon={<Lock className="w-5 h-5" />}
+            title="Encrypted by default"
+            body="State lives inside Intel TDX. Public observers see opaque commits — only Permission members read amounts."
+          />
+          <Feature
+            index={1}
+            icon={<Zap className="w-5 h-5" />}
+            title="One-RTT payments"
+            body="Settle inside the Ephemeral Rollup at L1.5 latency. No waiting for finality on the base layer."
+          />
+          <Feature
+            index={2}
+            icon={<Bot className="w-5 h-5" />}
+            title="Agent-native"
+            body="Standard HTTP 402. Drop a middleware on the seller, wrap fetch() on the buyer. No custom protocols."
+          />
+        </motion.section>
 
-      <section className="mt-28">
-        <div className="rounded-2xl border border-zinc-800 bg-haze p-8 md:p-12">
-          <div className="flex items-start gap-4">
-            <ShieldCheck className="w-6 h-6 text-accent2 mt-1" />
-            <div>
-              <h2 className="text-2xl font-semibold">Built on the right primitives.</h2>
-              <p className="mt-3 text-zinc-400 max-w-2xl">
-                Ohlarr uses MagicBlock&apos;s ER + PER + Permission Program in concert. The agent
-                handshake follows Coinbase&apos;s x402 spec verbatim, so any LangChain / CrewAI /
-                MCP agent works out of the box.
-              </p>
+        {/* Architecture */}
+        <motion.section
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.6 }}
+          className="mt-28"
+        >
+          <div className="rounded-2xl gradient-border bg-haze p-8 md:p-12">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-accent2/10 grid place-items-center flex-shrink-0">
+                <ShieldCheck className="w-5 h-5 text-accent2" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Built on the right primitives.</h2>
+                <p className="mt-3 text-zinc-400 max-w-2xl leading-relaxed">
+                  Ohlarr uses MagicBlock&apos;s ER + PER + Permission Program in concert. The agent
+                  handshake follows Coinbase&apos;s x402 spec verbatim, so any LangChain / CrewAI /
+                  MCP agent works out of the box.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {['Solana', 'Anchor', 'MagicBlock PER', 'Intel TDX TEE', 'x402', 'TypeScript SDK'].map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-xs px-3 py-1.5 rounded-full border border-zinc-800 text-zinc-400 bg-ink/50"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </motion.section>
 
-      <Footer />
-    </main>
+        {/* How it works */}
+        <motion.section
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={stagger}
+          className="mt-28"
+        >
+          <motion.h2 variants={fadeUp} custom={0} className="text-3xl font-bold text-center">
+            How it works
+          </motion.h2>
+          <motion.p variants={fadeUp} custom={1} className="text-zinc-400 text-center mt-3 max-w-xl mx-auto">
+            Three steps. No custom protocols. No key exchange ceremonies.
+          </motion.p>
+          <div className="mt-12 grid md:grid-cols-3 gap-8">
+            {[
+              { step: '01', title: 'Seller adds middleware', desc: 'One line of code wraps any Express/Next.js route with x402 payment requirements.' },
+              { step: '02', title: 'Buyer agent pays', desc: 'The agent receives HTTP 402, signs a settlement TX inside the Private Ephemeral Rollup.' },
+              { step: '03', title: 'Encrypted settlement', desc: 'Payment settles in the TEE. Public chain sees only opaque commits. Permission members see everything.' },
+            ].map((item, i) => (
+              <motion.div
+                key={item.step}
+                variants={fadeUp}
+                custom={i + 2}
+                className="relative"
+              >
+                <span className="text-5xl font-black text-gradient opacity-20">{item.step}</span>
+                <h3 className="mt-2 text-lg font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* CTA */}
+        <motion.section
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="mt-28 text-center"
+        >
+          <div className="rounded-2xl bg-gradient-to-br from-accent/10 to-accent2/10 border border-accent/20 p-12">
+            <RabbitLogo size={56} className="mx-auto mb-6 animate-float" />
+            <h2 className="text-3xl font-bold">Ready to make agent payments private?</h2>
+            <p className="mt-3 text-zinc-400 max-w-md mx-auto">
+              Explore the live dashboard, read the source, or deploy your own instance.
+            </p>
+            <div className="mt-8 flex justify-center gap-4">
+              <Link
+                href="/dashboard"
+                className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-accent text-white font-medium hover:bg-accent/90 transition-all duration-300 glow hover:scale-[1.02]"
+              >
+                Live Dashboard
+                <ExternalLink className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+              <a
+                href="https://github.com/thesithunyein/ohlarr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-zinc-700 hover:border-zinc-500 transition-all duration-300"
+              >
+                <Github className="w-4 h-4" /> GitHub
+              </a>
+            </div>
+          </div>
+        </motion.section>
+
+        <Footer />
+      </main>
+    </>
   );
 }
 
 function Header() {
   return (
-    <header className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent2" />
-        <span className="text-lg font-semibold tracking-tight">Ohlarr</span>
-      </div>
-      <nav className="hidden md:flex gap-8 text-sm text-zinc-400">
-        <Link href="/dashboard" className="hover:text-white">Dashboard</Link>
-        <a href="#" className="hover:text-white">Docs</a>
-        <a href="https://github.com/thesithunyein/ohlarr" className="hover:text-white">GitHub</a>
+    <motion.header
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="flex items-center justify-between glass rounded-2xl px-6 py-3 sticky top-4 z-50 border border-zinc-800/50"
+    >
+      <Link href="/" className="flex items-center gap-2.5 group">
+        <RabbitLogo size={32} className="transition-transform group-hover:scale-110" />
+        <span className="text-lg font-bold tracking-tight">Ohlarr</span>
+      </Link>
+      <nav className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
+        <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
+        <a href="https://github.com/thesithunyein/ohlarr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Docs</a>
+        <a
+          href="https://github.com/thesithunyein/ohlarr"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-zinc-800 hover:border-accent/40 hover:bg-accent/5 transition-all"
+        >
+          <Github className="w-3.5 h-3.5" /> GitHub
+        </a>
       </nav>
-    </header>
+    </motion.header>
   );
 }
 
@@ -101,31 +253,37 @@ function Feature({
   icon,
   title,
   body,
+  index,
 }: {
   icon: React.ReactNode;
   title: string;
   body: string;
+  index: number;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-haze p-6">
-      <div className="w-9 h-9 rounded-lg bg-accent/15 text-accent grid place-items-center">
+    <motion.div
+      variants={fadeUp}
+      custom={index}
+      className="rounded-xl border border-zinc-800 bg-haze p-6 card-hover"
+    >
+      <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent grid place-items-center">
         {icon}
       </div>
-      <h3 className="mt-4 font-medium">{title}</h3>
-      <p className="mt-2 text-sm text-zinc-400">{body}</p>
-    </div>
+      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{body}</p>
+    </motion.div>
   );
 }
 
 function CodeShowcase() {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-haze p-1 glow">
-      <div className="rounded-xl bg-ink p-5 font-mono text-[12.5px] leading-relaxed">
-        <div className="flex gap-1.5 mb-4">
-          <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-          <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-          <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-          <span className="ml-3 text-xs text-zinc-500">seller.ts</span>
+    <div className="rounded-2xl gradient-border bg-haze p-1 animate-glow-pulse">
+      <div className="rounded-xl bg-ink p-6 font-mono text-[13px] leading-relaxed">
+        <div className="flex items-center gap-1.5 mb-5">
+          <span className="w-3 h-3 rounded-full bg-red-500/60" />
+          <span className="w-3 h-3 rounded-full bg-yellow-500/60" />
+          <span className="w-3 h-3 rounded-full bg-green-500/60" />
+          <span className="ml-3 text-xs text-zinc-500 font-sans">seller.ts</span>
         </div>
         <pre className="whitespace-pre-wrap"><code>
           <span className="text-pink-400">import</span> <span className="text-zinc-200">{'{'} ohlarrMiddleware {'}'}</span> <span className="text-pink-400">from</span> <span className="text-emerald-400">{`'@ohlarr/sdk'`}</span>;
@@ -141,8 +299,11 @@ function CodeShowcase() {
 
 function Footer() {
   return (
-    <footer className="mt-32 pb-8 text-xs text-zinc-500 flex justify-between border-t border-zinc-900 pt-8">
-      <span>© {new Date().getFullYear()} Ohlarr · MIT License</span>
+    <footer className="mt-32 pb-8 text-xs text-zinc-500 flex flex-col sm:flex-row justify-between items-center border-t border-zinc-900 pt-8 gap-3">
+      <div className="flex items-center gap-2">
+        <RabbitLogo size={16} />
+        <span>© {new Date().getFullYear()} Ohlarr · MIT License</span>
+      </div>
       <span>Built for the Privacy Track — powered by MagicBlock</span>
     </footer>
   );
