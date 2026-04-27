@@ -32,9 +32,18 @@ function parseInstructionType(logs: string[]): OnChainEvent['type'] {
   return 'unknown';
 }
 
+// Anchor event discriminators: SHA256("event:<Name>")[0..8]
+const DISC_PAYMENT_SETTLED = [158, 182, 152, 76, 105, 23, 232, 135];
+const DISC_CHANNEL_OPENED = [253, 213, 255, 96, 31, 188, 47, 170];
+
+function matchDisc(bytes: Uint8Array, disc: number[]): boolean {
+  for (let i = 0; i < 8; i++) if (bytes[i] !== disc[i]) return false;
+  return true;
+}
+
 /** Parse Anchor "Program data:" log lines for event payloads.
- *  ChannelOpened layout (after 8-byte disc): [32 channel][32 buyer][32 seller]
- *  PaymentSettled layout (after 8-byte disc): [32 channel][8 amount][8 nonce][32 request_hash]
+ *  ChannelOpened:  disc(8) + channel(32) + buyer(32) + seller(32) = 104
+ *  PaymentSettled: disc(8) + channel(32) + amount(8) + nonce(8) + hash(32) = 88
  */
 function parseEventData(logs: string[]): {
   channel: string;
@@ -48,25 +57,20 @@ function parseEventData(logs: string[]): {
     try {
       const b64 = log.slice('Program data: '.length);
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      if (bytes.length < 8 + 32) continue;
-      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      if (bytes.length < 8) continue;
 
-      // Try PaymentSettled first: disc(8) + channel(32) + amount(8) + nonce(8) + hash(32) = 88
-      if (bytes.length >= 88) {
-        const amount = view.getBigUint64(40, true);
-        if (amount > 0n) {
-          return {
-            channel: new PublicKey(bytes.slice(8, 40)).toBase58(),
-            amount,
-            nonce: view.getBigUint64(48, true),
-            buyer: '',
-            seller: '',
-          };
-        }
+      if (matchDisc(bytes, DISC_PAYMENT_SETTLED) && bytes.length >= 88) {
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        return {
+          channel: new PublicKey(bytes.slice(8, 40)).toBase58(),
+          amount: view.getBigUint64(40, true),
+          nonce: view.getBigUint64(48, true),
+          buyer: '',
+          seller: '',
+        };
       }
 
-      // Try ChannelOpened: disc(8) + channel(32) + buyer(32) + seller(32) = 104
-      if (bytes.length >= 104) {
+      if (matchDisc(bytes, DISC_CHANNEL_OPENED) && bytes.length >= 104) {
         return {
           channel: new PublicKey(bytes.slice(8, 40)).toBase58(),
           amount: 0n,
@@ -149,9 +153,22 @@ export function useProgramEvents(): UseProgramEventsReturn {
 
           // accountKeys[0] is always the fee payer (buyer / initiator)
           const feePayer = accountKeys[0]?.toBase58() ?? '';
-          // For buyer/seller: use event data if available, else fee payer
-          const buyerAddr = eventData?.buyer || feePayer;
-          const sellerAddr = eventData?.seller || '';
+          let buyerAddr = eventData?.buyer || feePayer;
+          let sellerAddr = eventData?.seller || '';
+
+          // For settle txns: read channel account to get real buyer/seller
+          if (type === 'settle' && eventData?.channel && !sellerAddr) {
+            try {
+              const channelAcct = await conn.getAccountInfo(new PublicKey(eventData.channel));
+              if (channelAcct && channelAcct.data.length >= 72) {
+                const parsed = parseChannel(channelAcct.data);
+                buyerAddr = parsed.buyer.toBase58();
+                sellerAddr = parsed.seller.toBase58();
+              }
+            } catch {
+              // Fallback to fee payer
+            }
+          }
 
           parsedEvents.push({
             id: sigInfo.signature,
