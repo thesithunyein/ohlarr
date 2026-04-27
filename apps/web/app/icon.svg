@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#0a0a0f"/>
+  <defs>
+    <linearGradient id="g" x1="6" y1="4" x2="26" y2="28">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <!-- Rabbit ears -->
+  <ellipse cx="12" cy="8" rx="2.5" ry="6" fill="url(#g)" opacity="0.9"/>
+  <ellipse cx="20" cy="8" rx="2.5" ry="6" fill="url(#g)" opacity="0.9"/>
+  <!-- Head -->
+  <circle cx="16" cy="17" r="7" fill="url(#g)"/>
+  <!-- Eyes -->
+  <circle cx="13.5" cy="15.5" r="1.2" fill="#0a0a0f"/>
+  <circle cx="18.5" cy="15.5" r="1.2" fill="#0a0a0f"/>
+  <!-- Nose -->
+  <ellipse cx="16" cy="18.5" rx="1" ry="0.7" fill="#0a0a0f"/>
+</svg>

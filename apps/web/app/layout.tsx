@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   description:
     'Drop-in x402 middleware that settles AI agent payments inside MagicBlock Private Ephemeral Rollups. Encrypted by default, verifiable when needed.',
   metadataBase: new URL('https://ohlarr.com'),
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
   openGraph: {
     title: 'Ohlarr',
     description: 'Private payment rails for autonomous agents.',
