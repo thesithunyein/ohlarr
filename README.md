@@ -13,7 +13,7 @@
 
 Built on **MagicBlock Private Ephemeral Rollups** (Intel TDX TEE) — amounts and intent stay encrypted, settlements stay verifiable.
 
-[**🚀 Live Dashboard →**](https://ohlarr.com/dashboard) · [**📺 Demo Video**](#-demo-video) · [**🔗 Solana Explorer**](https://explorer.solana.com/address/CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA?cluster=devnet)
+[**🚀 Live Dashboard →**](https://ohlarr.com/dashboard) · [**📺 Demo Video**](https://youtu.be/GZLxXcv3s9c) · [**🔗 Solana Explorer**](https://explorer.solana.com/address/CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA?cluster=devnet)
 
 </div>
 
