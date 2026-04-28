@@ -191,7 +191,9 @@ gh workflow run deploy-devnet.yml
 
 > **3-min demo:** Problem → Solution → Live demo → Tech stack
 
-📺 **[Watch on YouTube →](https://youtube.com/...)** *(coming soon)*
+[![Watch the demo](https://img.youtube.com/vi/GZLxXcv3s9c/maxresdefault.jpg)](https://youtu.be/GZLxXcv3s9c)
+
+📺 **[Watch on YouTube →](https://youtu.be/GZLxXcv3s9c)**
 
 ---
 
