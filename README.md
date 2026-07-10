@@ -4,7 +4,7 @@
 
 ### Private payment rails for autonomous agents.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-ohlarr.com-7c3aed?style=for-the-badge)](https://ohlarr.com)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-ohlarr.com-7c3aed?style=for-the-badge)](https://ohlarr.vercel.app)
 [![Solana Devnet](https://img.shields.io/badge/Solana-Devnet-10b981?style=for-the-badge&logo=solana)](https://explorer.solana.com/address/CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA?cluster=devnet)
 [![Anchor](https://img.shields.io/badge/Anchor-0.31.1-9333ea?style=for-the-badge)](https://www.anchor-lang.com/)
 [![License](https://img.shields.io/badge/License-MIT-zinc?style=for-the-badge)](LICENSE)
@@ -13,7 +13,7 @@
 
 Built on **MagicBlock Private Ephemeral Rollups** (Intel TDX TEE) — amounts and intent stay encrypted, settlements stay verifiable.
 
-[**🚀 Live Dashboard →**](https://ohlarr.com/dashboard) · [**📺 Demo Video**](https://youtu.be/GZLxXcv3s9c) · [**🔗 Solana Explorer**](https://explorer.solana.com/address/CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA?cluster=devnet)
+[**🚀 Live Dashboard →**](https://ohlarr.vercel.app/dashboard) · [**📺 Demo Video**](https://youtu.be/GZLxXcv3s9c) · [**🔗 Solana Explorer**](https://explorer.solana.com/address/CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA?cluster=devnet)
 
 </div>
 
@@ -49,7 +49,7 @@ The base Solana chain sees only opaque commits. Permission-key holders see every
 
 ## 🎬 The Killer Demo
 
-Visit [**ohlarr.com/dashboard**](https://ohlarr.com/dashboard):
+Visit [**ohlarr.com/dashboard**](https://ohlarr.vercel.app/dashboard):
 
 | 👁️‍🗨️ Public Solana Observer | 🔓 Authorized Ohlarr View |
 |---|---|
@@ -140,7 +140,7 @@ ohlarr/
 
 ### 1. Use the live demo
 
-Just visit [**ohlarr.com**](https://ohlarr.com). The program is already deployed:
+Just visit [**ohlarr.com**](https://ohlarr.vercel.app). The program is already deployed:
 
 - **Program ID:** `CmHUW6WAUcobsYCHpK2cSgjcYU5KqbW8MDXunK5SzdLA`
 - **Network:** Solana devnet
@@ -206,7 +206,7 @@ This project addresses the bounty's core thesis directly:
 | Bounty Criterion | Ohlarr |
 |------------------|--------|
 | **Effective use of PER / Private Payments API** | Settlements run inside the PER on Intel TDX TEE; uses `ephemeral_rollups_sdk` macros (`#[ephemeral]`, `#[delegate]`, `#[commit]`) |
-| **Working demo** | Live at [ohlarr.com](https://ohlarr.com) — real devnet program + real settlements + real x402 endpoint |
+| **Working demo** | Live at [ohlarr.com](https://ohlarr.vercel.app) — real devnet program + real settlements + real x402 endpoint |
 | **Quality of architecture** | Clean separation: program / SDK / middleware / agent — drop-in for any Express/Next.js app |
 | **Real-world problem** | Agents leak strategy via on-chain payment metadata. We fix that. |
 | **Novel UX** | Side-by-side dual-view dashboard makes privacy *visceral* |
